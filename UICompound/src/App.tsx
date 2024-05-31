@@ -195,7 +195,6 @@
 // export default App;
 
 
-
 import { useEffect, useState } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
@@ -203,7 +202,7 @@ import { ethers } from "ethers";
 import abi from "./abi.json";
 import "./App.css";
 
-interface providerDetails {
+interface ProviderDetails {
   provider: ethers.JsonRpcProvider;
   signer: ethers.JsonRpcSigner;
   contract: ethers.Contract;
@@ -213,9 +212,7 @@ interface providerDetails {
   supplyAmount: string;
 }
 
-const LendingAndBorrowingUI = (opts: providerDetails) => {
-  // Define supplyAmount state within the component
-
+const LendingAndBorrowingUI = (opts: ProviderDetails) => {
   return (
     <div>
       <h2>Lending and Borrowing Interface</h2>
@@ -226,7 +223,7 @@ const LendingAndBorrowingUI = (opts: providerDetails) => {
           value={opts.supplyAmount}
           onChange={(e) => opts.supplyAmtHandler(e.target.value)}
         />
-        <button onClick={() => opts.handleSupply}>Supply Collateral</button>
+        <button onClick={() => opts.handleSupply()}>Supply Collateral</button>
       </div>
       <div>
         <p>Total Supplied: {opts.totalSupplied}</p>
@@ -243,54 +240,66 @@ function App() {
   const [supplyAmount, setSupplyAmount] = useState<string>("");
 
   useEffect(() => {
-    const providerDetails = async () => {
-      const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
-      const signer = await provider.getSigner(0);
-      const contract = new ethers.Contract(
-        "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        abi.abi,
-        signer
-      );
+    const initProviderDetails = async () => {
+      try {
+        const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+        const signer = await provider.getSigner();
+        const contract = new ethers.Contract(
+          "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", // Ensure this is the correct address
+          abi.abi,
+          signer
+        );
 
-      setProvider(provider);
-      setSigner(signer);
-      setContract(contract);
+        setProvider(provider);
+        setSigner(signer);
+        setContract(contract);
+      } catch (error) {
+        console.error("Error initializing provider details:", error);
+      }
     };
 
-    providerDetails();
+    initProviderDetails();
   }, []);
 
-  // Fix: Pass supplyAmount as an argument to handleSupply function
   const handleSupply = async () => {
-    if (contract) {
-      const tx = await contract.supplyCollateral(
-        0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266,
-        ethers.parseUnits(supplyAmount, 18)
-      );
-      await tx.wait();
-      alert("Collateral supplied successfully");
-      const newTotalSupplied = await contract.getTotalSuppliedAmount(
-        signer?.address
-      );
-      setTotalSupplied(ethers.formatUnits(newTotalSupplied, 18));
+    if (contract && signer) {
+      try {
+        const parsedAmount = ethers.utils.parseUnits(supplyAmount, 18);
+        const tx = await contract.supplyCollateral(
+          "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", // token address (example)
+          parsedAmount
+        );
+        await tx.wait();
+        alert("Collateral supplied successfully");
+        fetchContractData();
+      } catch (error) {
+        console.error("Error supplying collateral:", error);
+      }
+    } else {
+      console.error("Contract or signer is undefined");
+    }
+  };
+
+  const fetchContractData = async () => {
+    if (contract && signer) {
+      try {
+        const userAddress = await signer.getAddress(); // Ensure this is correctly awaited
+        console.log("User address:", userAddress);
+        // const contract = new ethers.Contract(userAddress, contractABI, provider);
+        const supplied = await contract.getTotalSuppliedAmount(await signer.getAddress());
+        console.log("Supplied amount raw:", supplied);
+        setTotalSupplied(ethers.utils.formatUnits(supplied, 18));
+      } catch (error) {
+        console.error("Error fetching contract data:", error);
+      }
     }
   };
 
   useEffect(() => {
-    if (contract) {
+    if (contract && signer) {
       fetchContractData();
     }
-  }, [contract]);
-
-  const fetchContractData = async () => {
-    if (contract) {
-      const supplied = 
-        
-        
-       signer ? await contract.getTotalSuppliedAmount(await signer.getAddress()) : "" 
-      setTotalSupplied(ethers.formatUnits(supplied, 18));
-    }
-  };
+  }, [contract, signer]);
 
   return (
     <>
@@ -304,13 +313,13 @@ function App() {
       </div>
       <h1>Vite + React</h1>
       <div className="card">
-        {provider && signer && contract && supplyAmount && (
+        {provider && signer && contract && (
           <LendingAndBorrowingUI
             supplyAmount={supplyAmount}
             provider={provider}
             signer={signer}
             contract={contract}
-            handleSupply={handleSupply} // Pass supplyAmount here
+            handleSupply={handleSupply}
             totalSupplied={totalSupplied}
             supplyAmtHandler={setSupplyAmount}
           />
