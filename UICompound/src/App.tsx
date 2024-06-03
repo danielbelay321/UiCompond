@@ -35,6 +35,7 @@ function App() {
   async function borrowAssets(_contract: ethers.Contract) {
     try {
       const _borrowedAmount = await _contract.getTotalBorrowedAmount(mainAddress);
+      console.log("Borrowed Amount:", _borrowedAmount); // Add this line
       setBorrowedAmount((BigInt(_borrowedAmount) / BigInt(10 ** 8)).toString());
     } catch (error) {
       console.error("Error getting borrowed amount:", error);
@@ -79,8 +80,9 @@ function App() {
         </div>
         <div className="buttonLabel">
           <h2>
-            Borrowed Amount : {borrowedAmount} USDC
+            BorrowedAmount : {borrowedAmount ? (Number(borrowedAmount) / 10 ** 8)?.toString() : "0"} USDC
           </h2>
+
           {contract && (
             <button
               onClick={async () => {
@@ -90,11 +92,11 @@ function App() {
               Refresh
             </button>
           )}
-        </div>
+      </div>
         <div className="buttonLabel">
           {collateral && (
             <h2>
-              Collateral : {collateral} USDC
+              balance : {balance} USDC
             </h2>
           )}
           {contract && (
@@ -112,7 +114,7 @@ function App() {
             <button
               onClick={async () => {
                 const value = ethers.parseEther("2");
-                const tx = await contract.supplyCollateralInNativeEth({
+                const tx = await contract.supplyCollateral({
                   value: value,
                   gasLimit: 10000000,
                 });
@@ -130,7 +132,7 @@ function App() {
           <button
             onClick={async () => {
               try {
-                const tx = await contract.borrowAssetsInUSDC(
+                const tx = await contract.getTotalBorrowedAmount(
                   ethers.parseUnits(borrowedAmountInUSDC, 6),
                   { gasLimit: 10000000 }
                 );
